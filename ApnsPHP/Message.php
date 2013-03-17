@@ -372,15 +372,20 @@ class ApnsPHP_Message
 	 */
 	public function getPayload()
 	{
-		$sJSON = json_encode($this->_getPayload(), defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0);
-		if (!defined('JSON_UNESCAPED_UNICODE') && function_exists('mb_convert_encoding')) {
-			$sJSON = preg_replace_callback(
-				'~\\\\u([0-9a-f]{4})~i',
-				create_function('$aMatches', 'return mb_convert_encoding(pack("H*", $aMatches[1]), "UTF-8", "UTF-16");'),
-				$sJSON);
-		}
+		$sJSON = json_encode($this->_getPayload());
+        if (!defined('JSON_UNESCAPED_UNICODE') && function_exists('mb_convert_encoding')) {
+            preg_match_all('~\\\\u([0-9a-f]{4})~i', $sJSON, $aFound);
+            if (!empty($aFound)) {
+                $aReplace = array();
+                foreach ($aFound[1] as $sFound) {
+                    $aReplace[] = mb_convert_encoding(pack("H*", $sFound), "UTF-8", "UTF-16");
+                }
+                $sJSON = str_replace($aFound[0], $aReplace, $sJSON);
+            }
+            unset($aFound, $aReplace);
+        }
 
-		$sJSONPayload = str_replace(
+        $sJSONPayload = str_replace(
 			'"' . self::APPLE_RESERVED_NAMESPACE . '":[]',
 			'"' . self::APPLE_RESERVED_NAMESPACE . '":{}',
 			$sJSON
